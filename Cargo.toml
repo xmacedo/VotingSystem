@@ -1,0 +1,13 @@
+[package]
+name = "voting-system"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = { version = "0.7", features = ["ws", "json"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tower = "0.5"
+uuid = { version = "1", features = ["v4"] }
+futures = "0.3"
