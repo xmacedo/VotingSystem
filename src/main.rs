@@ -7,14 +7,14 @@ use axum::{
 };
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap},
     net::SocketAddr,
     sync::{Arc, atomic::AtomicU32},
 };
 
 use tokio::sync::{broadcast, RwLock};
 
-use voting_system::{ AppState, VoteRequest, Poll, OptionItem, PollId };
+use voting_system::{ AppState, VoteRequest, Poll, PollId };
 
 // ENDPOINTS
 
@@ -83,7 +83,7 @@ async fn main() {
     println!("STARTING SERVER...");
 
     // Initialize polls store
-    let mut polls_map: HashMap<PollId, Poll> = HashMap::new();
+    let polls_map: HashMap<PollId, Poll> = HashMap::new();
 
 
     /*polls_map.insert("poll_1".to_string(), Poll {
