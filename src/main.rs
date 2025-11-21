@@ -14,7 +14,7 @@ use std::{
 
 use tokio::sync::{broadcast, RwLock};
 
-use voting_system::{ AppState, VoteRequest, Poll, OptionItem };
+use voting_system::{ AppState, VoteRequest, Poll, OptionItem, PollId };
 
 // ENDPOINTS
 
@@ -107,7 +107,7 @@ async fn main() {
     let (ws_tx, _ws_rx) = broadcast::channel(100);
 
     //
-    let next_poll_id = AtomicU32::new(2);
+    let next_poll_id = Arc::new(AtomicU32::new(2));
     
     // application state
     let state = AppState { polls, ws_tx, next_poll_id };

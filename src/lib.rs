@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use std::sync::{Arc, atomic::AtomicU32};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 use tokio::sync::RwLock;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 // Type Definitions
 pub type PollId = u32;
@@ -14,7 +14,7 @@ pub type PollStore = Arc<RwLock<HashMap<PollId, Poll>>>;
 pub struct AppState {
     pub polls: PollStore,
     pub ws_tx: tokio::sync::broadcast::Sender<Poll>,
-    pub next_poll_id: AtomicU32,
+    pub next_poll_id: Arc<AtomicU32>,
 }
 
 #[derive(Debug, Clone, Serialize)]
