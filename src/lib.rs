@@ -14,23 +14,23 @@ pub struct AppState {
 
 #[derive(Debug, Clone)]
 pub struct OptionItem {
-    pub id: String,
+    pub id: u32,
     pub label: String,
     pub votes: u64,
 }
 
 #[derive(Debug, Clone)]
 pub struct Poll {
-    pub id: String,
+    pub id: u32,
     pub question: String,
     pub is_open: bool,
     pub options: Vec<OptionItem>,
-    pub voters: HashSet<Uuid>, // quem já votou nessa poll
+    pub voters: HashSet<Uuid>, // Set of voter IDs who have voted in this poll
 }
 
 #[derive(Deserialize)]
 pub struct VoteRequest {
-    pub poll_id: String, // ID of the poll being voted in
-    pub option_id: String, // ID of the option being voted for
+    pub poll_id: u32, // ID of the poll being voted in
+    pub option_id: u32, // ID of the option being voted for
     pub voter_id: Uuid, // unique ID for each voter
 }
