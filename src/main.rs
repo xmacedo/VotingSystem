@@ -14,7 +14,7 @@ use std::{
 
 use tokio::sync::{broadcast, RwLock};
 
-use voting_system::{ AppState, VoteRequest, Poll, PollId };
+use voting_system::{ AppState, VoteRequest, Poll, PollId, ApiError };
 
 // ENDPOINTS
 
@@ -22,24 +22,33 @@ use voting_system::{ AppState, VoteRequest, Poll, PollId };
 pub async fn vote(
     State(state): State<AppState>, 
     Json(payload): Json<VoteRequest>
-) -> StatusCode {
+) -> (StatusCode, Json<ApiError>) {
 
     let mut polls = state.polls.write().await;
 
     let Some(poll) = polls.get_mut(&payload.poll_id) else {
         // poll NOT FOUND
-        return StatusCode::NOT_FOUND;
+        return (
+            StatusCode::NOT_FOUND,
+            Json(ApiError { message: "Poll não encontrada".into() })
+        );
     };
 
     if !poll.is_open {
         // poll closed
-        return StatusCode::FORBIDDEN;
+        return (
+            StatusCode::FORBIDDEN,
+            Json(ApiError { message: "A votação está encerrada".into() })
+        );
     }
 
     // has this voter already voted in this poll?
     if poll.voters.contains(&payload.voter_id) {
         // User has already voted
-        return StatusCode::CONFLICT; // 409
+        return (
+            StatusCode::CONFLICT,
+            Json(ApiError { message: "Usuário já votou nessa poll".into() })
+        );
     }
 
     // Find the option and increment its vote count
@@ -50,11 +59,17 @@ pub async fn vote(
         // Notify via WebSocket
         let _ = state.ws_tx.send(poll.clone());
 
-        StatusCode::OK
-    } else {
-        // option not found
-        StatusCode::BAD_REQUEST
+        return (
+            StatusCode::OK,
+            Json(ApiError { message: "Voto registrado com sucesso".into() })
+        );
     }
+        // option not found
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiError { message: "Opção não encontrada nessa poll".into() })
+        );
+    
 }
 
 // GET /polls -> list all polls
@@ -77,28 +92,12 @@ async fn get_poll(
 }
 
 // MAIN
-
 #[tokio::main]
 async fn main() {
-    println!("STARTING SERVER...");
+    println!("Starting server......");
 
     // Initialize polls store
     let polls_map: HashMap<PollId, Poll> = HashMap::new();
-
-
-    /*polls_map.insert("poll_1".to_string(), Poll {
-        id: "poll_1".into(),
-        question: "Which is the best programming Language?".into(),
-        is_open: true,
-        voters: HashSet::new(),
-        options: vec![
-            OptionItem { id: "rust".into(), label: "Rust".into(), votes: 0 },
-            OptionItem { id: "go".into(), label: "Go".into(), votes: 0 },
-            OptionItem { id: "java".into(), label: "Java".into(), votes: 0 }
-        ],
-    });*/
-
-    //println!("{:#?}", polls_map);
 
     // shared polls store
     let polls = Arc::new(RwLock::new(polls_map));
@@ -120,7 +119,7 @@ async fn main() {
         .with_state(state);
 
     // start server
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("🚀 Server running on http://{}", addr);
 
     // create TCP listener

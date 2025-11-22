@@ -39,3 +39,8 @@ pub struct VoteRequest {
     pub option_id: OptionId, // ID of the option being voted for
     pub voter_id: Uuid, // unique ID for each voter
 }
+
+#[derive(Serialize)]
+pub struct ApiError {
+    pub message: String,
+}
