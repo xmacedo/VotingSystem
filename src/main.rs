@@ -1,10 +1,13 @@
 //
 use axum::{
-    extract::{Path, State},
+    extract::{WebSocketUpgrade, Path, State},
     http::StatusCode,
     routing::{get, post},
     Json, Router,
 };
+
+use axum::response::IntoResponse;
+use futures::{StreamExt, SinkExt};
 
 use std::{
     collections::{HashMap},
@@ -83,11 +86,66 @@ async fn get_poll(
     State(state): State<AppState>,
     Path(poll_id): Path<PollId>,
 ) -> Result<Json<Poll>, StatusCode> {
-    let polls = state.polls.read().await;
+    let polls = state.polls.read().await; 
     if let Some(poll) = polls.get(&poll_id) {
         Ok(Json(poll.clone()))
     } else {
         Err(StatusCode::NOT_FOUND)
+    }
+}
+
+//todo : add create poll endpoint
+//todo: add websocket endpoint
+
+// GET /ws -> stream poll updates via WebSocket
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_socket(socket, state))
+}
+
+
+// Socket handler
+async fn handle_socket(mut socket: WebSocket, state: AppState) {
+    // subscribe to broadcast channel
+    let mut rx = state.ws_tx.subscribe();
+
+    // (opcional) send initial snapshot of all polls
+    if let Ok(polls_lock) = state.polls.read().await.try_into() {
+        // 
+        let polls = state.polls.read().await;
+        if socket
+            .send(Message::Text(
+                serde_json::to_string(&*polls).unwrap(),
+            ))
+            .await
+            .is_err()
+        {
+            return;
+        }
+    }
+
+    // loop: for ever, send updates to client
+    loop {
+        tokio::select! {
+            Ok(poll) = rx.recv() => {
+                let msg = serde_json::to_string(&poll).unwrap();
+                if socket.send(Message::Text(msg)).await.is_err() {
+                    break; // client disconnected
+                }
+            }
+            // se quiser reagir a mensagens do cliente:
+            Some(Ok(msg)) = socket.next() => {
+                match msg {
+                    Message::Close(_) => break,
+                    _ => {
+                        // ignore
+                    }
+                }
+            }
+            else => break,
+        }
     }
 }
 
@@ -116,6 +174,7 @@ async fn main() {
         .route("/vote", post(vote))
         .route("/polls", get(list_polls))
         .route("/polls/:poll_id", get(get_poll))
+        .route("/ws", get(ws_handler)) 
         .with_state(state);
 
     // start server
