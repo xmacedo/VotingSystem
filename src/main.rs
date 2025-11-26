@@ -3,11 +3,11 @@ use axum::{
     extract::{WebSocketUpgrade, Path, State},
     http::StatusCode,
     routing::{get, post},
+    response::{IntoResponse},
     Json, Router,
 };
-
-use axum::response::IntoResponse;
-use futures::{StreamExt, SinkExt};
+use axum::extract::ws::{WebSocket, Message};
+use futures::{StreamExt};
 
 use std::{
     collections::{HashMap},
@@ -111,40 +111,19 @@ async fn handle_socket(mut socket: WebSocket, state: AppState) {
     // subscribe to broadcast channel
     let mut rx = state.ws_tx.subscribe();
 
-    // (opcional) send initial snapshot of all polls
-    if let Ok(polls_lock) = state.polls.read().await.try_into() {
-        // 
-        let polls = state.polls.read().await;
-        if socket
-            .send(Message::Text(
-                serde_json::to_string(&*polls).unwrap(),
-            ))
-            .await
-            .is_err()
-        {
-            return;
-        }
-    }
-
-    // loop: for ever, send updates to client
     loop {
         tokio::select! {
             Ok(poll) = rx.recv() => {
                 let msg = serde_json::to_string(&poll).unwrap();
                 if socket.send(Message::Text(msg)).await.is_err() {
-                    break; // client disconnected
+                    break;
                 }
             }
-            // se quiser reagir a mensagens do cliente:
             Some(Ok(msg)) = socket.next() => {
-                match msg {
-                    Message::Close(_) => break,
-                    _ => {
-                        // ignore
-                    }
+                if let Message::Close(_) = msg {
+                    break;
                 }
             }
-            else => break,
         }
     }
 }
