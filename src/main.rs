@@ -12,12 +12,15 @@ use futures::{StreamExt};
 use std::{
     collections::{HashMap},
     net::SocketAddr,
-    sync::{Arc, atomic::AtomicU32},
+    sync::{Arc, atomic::AtomicU32, Ordering},
 };
 
 use tokio::sync::{broadcast, RwLock};
 
-use voting_system::{ AppState, VoteRequest, Poll, PollId, ApiError };
+use voting_system::{
+    AppState, VoteRequest, Poll, OptionItem, PollId,
+    ApiError, CreatePollRequest, CreateOptionRequest,
+};
 
 // ENDPOINTS
 
